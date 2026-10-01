@@ -1,0 +1,36 @@
+{
+  "name": "gridboard",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @gridboard/api --filter @gridboard/web dev",
+    "build": "pnpm -r build",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
+    "db:migrate": "pnpm --filter @gridboard/api db:migrate",
+    "db:seed": "pnpm --filter @gridboard/api db:seed",
+    "db:generate": "pnpm --filter @gridboard/api db:generate",
+    "format": "prettier --write .",
+    "db:reset": "pnpm --filter @gridboard/api db:reset",
+    "db:status": "pnpm --filter @gridboard/api db:status"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@gridboard/config": "workspace:*",
+    "@types/node": "22.20.5",
+    "dotenv": "18.0.5",
+    "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "prisma": "7.10.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0"
+  }
+}
