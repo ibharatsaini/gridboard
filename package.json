@@ -21,6 +21,7 @@
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@gridboard/config": "workspace:*",
+    "@gridboard/shared": "workspace:*",
     "@types/node": "22.20.5",
     "dotenv": "18.0.5",
     "eslint": "9.39.5",
