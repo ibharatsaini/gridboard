@@ -1,0 +1,100 @@
+// GridBoard data model. PostgreSQL is the single source of truth for ownership.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../apps/api/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ActivityType {
+  JOIN
+  CLAIM
+}
+
+model User {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  displayName String   @map("display_name") @db.VarChar(24)
+  color       String   @db.VarChar(7)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // Durable cooldown guard. Redis is the fast path; this column is what makes
+  // the cooldown correct even when Redis is unavailable (see claim.service.ts).
+  lastClaimAt DateTime? @map("last_claim_at") @db.Timestamptz(3)
+
+  sessions Session[]
+  cells    Cell[]
+  claims   Claim[]
+  activity ActivityEvent[]
+
+  @@map("users")
+}
+
+model Session {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  // SHA-256 of the opaque cookie token. The raw token is never stored.
+  tokenHash  String   @unique @map("token_hash") @db.Char(64)
+  userId     String   @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Cell {
+  id          Int       @id @default(autoincrement())
+  row         Int
+  column      Int       @map("col")
+  ownerId     String?   @map("owner_id") @db.Uuid
+  claimedAt   DateTime? @map("claimed_at") @db.Timestamptz(3)
+  lockedUntil DateTime? @map("locked_until") @db.Timestamptz(3)
+  // Incremented on every ownership change. Clients use it to drop stale events.
+  version     Int       @default(0)
+
+  owner    User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  claims   Claim[]
+  activity ActivityEvent[]
+
+  @@unique([row, column])
+  @@index([ownerId])
+  @@map("cells")
+}
+
+model Claim {
+  id              Int      @id @default(autoincrement())
+  cellId          Int      @map("cell_id")
+  userId          String   @map("user_id") @db.Uuid
+  previousOwnerId String?  @map("previous_owner_id") @db.Uuid
+  cellVersion     Int      @map("cell_version")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  cell Cell @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Per-player history, and a cell's history (newest first = ORDER BY id DESC). No createdAt-only index:
+  // nothing queries by time alone, and every extra index is paid for on every claim.
+  @@index([userId, createdAt])
+  @@index([cellId, id])
+  @@map("claims")
+}
+
+model ActivityEvent {
+  id        Int          @id @default(autoincrement())
+  type      ActivityType
+  userId    String       @map("user_id") @db.Uuid
+  cellId    Int?         @map("cell_id")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // A real FK so a claim's feed row can be written in the SAME nested write as the ownership change.
+  cell Cell? @relation(fields: [cellId], references: [id], onDelete: SetNull)
+
+  // The feed is read newest-first by primary key (ORDER BY id DESC LIMIT n), so no extra index is needed.
+  @@map("activity_events")
+}
