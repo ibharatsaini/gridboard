@@ -6,3 +6,7 @@ coverage
 *.log
 apps/api/src/generated
 .DS_Store
+apps/api/node_modules
+apps/api/dist
+packages/shared/node_modules
+packages/config/node_modules
