@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-cell: var(--cell);
+  --color-cell-hover: var(--cell-hover);
+  --color-accent: var(--accent);
+}
+
+:root {
+  --surface: #f6f6f7;
+  --panel: #ffffff;
+  --line: #e4e4e7;
+  --ink: #18181b;
+  --muted: #62626b; /* 5.9:1 on panel */
+  --cell: #ffffff;
+  --cell-hover: #eef2ff;
+  --accent: #2563eb;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #0c0c0e;
+    --panel: #151518;
+    --line: #2a2a2f;
+    --ink: #f4f4f5;
+    --muted: #a1a1aa;
+    --cell: #1d1d22;
+    --cell-hover: #2a2a38;
+    --accent: #7aa2ff;
+    color-scheme: dark;
+  }
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Cell claim: scale pop + highlight ring, then settle into the owner colour. */
+@keyframes claim-pop {
+  0% { transform: scale(0.6); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent); }
+  45% { transform: scale(1.25); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes claim-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+@keyframes claiming-pulse { 50% { opacity: 0.45; } }
+
+.cell-pop { animation: claim-pop 520ms cubic-bezier(.2,.8,.2,1); z-index: 2; }
+.cell-shake { animation: claim-shake 260ms ease-in-out 2; }
+.cell-claiming { animation: claiming-pulse 700ms ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cell-pop, .cell-shake, .cell-claiming { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
