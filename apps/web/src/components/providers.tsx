@@ -7,6 +7,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1 } } }));
   return (
     <QueryClientProvider client={client}>
+      {/* "user" honours prefers-reduced-motion for every motion component */}
       <MotionConfig reducedMotion="user">
         {children}
         <Toaster position="bottom-center" closeButton richColors toastOptions={{ duration: 2600 }} />

@@ -2,7 +2,7 @@ import type {
   ActivityDTO, ApiErrorBody, CellDetailDTO, ClaimResultDTO, ErrorCode, GridDTO, JoinRequest,
   LeaderboardDTO, BoardStatsDTO, JoinResultDTO, SessionDTO,
 } from "@gridboard/shared";
-import { clearToken, getToken, setToken } from "./auth-token";
+import { clearToken, getToken, setToken } from "@/lib/auth-token";
 
 // Public, non-secret: the browser needs to know where the API lives.
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
