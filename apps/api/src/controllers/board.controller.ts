@@ -1,5 +1,9 @@
 import type { Request, Response } from "express";
-import { activityQuerySchema, cellIdParamSchema, type BoardStatsDTO } from "@gridboard/shared";
+import {
+  activityQuerySchema,
+  cellIdParamSchema,
+  type BoardStatsDTO,
+} from "@gridboard/shared";
 import type { AppDeps } from "../container";
 
 export function boardController(d: AppDeps) {
@@ -15,7 +19,10 @@ export function boardController(d: AppDeps) {
       res.json({ data: await d.board.getLeaderboard() });
     },
     async stats(_req: Request, res: Response) {
-      const [counts, online] = await Promise.all([d.board.getCounts(), d.presence.countOnline()]);
+      const [counts, online] = await Promise.all([
+        d.board.getCounts(),
+        d.presence.countOnline(),
+      ]);
       const body: BoardStatsDTO = { ...counts, online };
       res.json({ data: body });
     },

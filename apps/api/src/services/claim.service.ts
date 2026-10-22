@@ -6,11 +6,11 @@ import {
   type ErrorCode,
   type OwnerDTO,
 } from "@gridboard/shared";
-import type { Logger } from "../config/logger";
-import { Prisma, type Db } from "../lib/prisma";
-import { cooldownRemainingMs } from "../lib/cooldown";
-import type { CellGate } from "../redis/cell-gate";
-import type { CooldownStore } from "../redis/cooldown-store";
+import type { Logger } from "../../config/logger";
+import { Prisma, type Db } from "../../lib/prisma";
+import { cooldownRemainingMs } from "../../lib/cooldown";
+import type { CellGate } from "../../redis/cell-gate";
+import type { CooldownStore } from "../../redis/cooldown-store";
 import { toCellDTO, toOwnerDTO } from "./board.service";
 
 export type ClaimResult =
@@ -26,7 +26,10 @@ export type ClaimResult =
 
 export type ClaimFailure = {
   success: false;
-  code: Extract<ErrorCode, "CELL_ALREADY_CLAIMED" | "CELL_LOCKED" | "CLAIM_COOLDOWN" | "CELL_NOT_FOUND">;
+  code: Extract<
+    ErrorCode,
+    "CELL_ALREADY_CLAIMED" | "CELL_LOCKED" | "CLAIM_COOLDOWN" | "CELL_NOT_FOUND"
+  >;
   /** Milliseconds until a retry can succeed (cooldown / lock). */
   retryAfterMs?: number;
   owner?: OwnerDTO;
@@ -38,13 +41,15 @@ export interface ClaimRules {
   lockMs: number;
 }
 
-export const DEFAULT_CLAIM_RULES: ClaimRules = { cooldownMs: CLAIM_COOLDOWN_MS, lockMs: CELL_LOCK_MS };
+export const DEFAULT_CLAIM_RULES: ClaimRules = {
+  cooldownMs: CLAIM_COOLDOWN_MS,
+  lockMs: CELL_LOCK_MS,
+};
 
 const OWNER_SELECT = { id: true, displayName: true, color: true } as const;
 
 const isRecordNotFound = (err: unknown) =>
   err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025";
-
 
 export class ClaimService {
   constructor(
@@ -59,7 +64,11 @@ export class ClaimService {
   async claim(userId: string, cellId: number): Promise<ClaimResult> {
     const reservation = await this.cooldowns.acquire(userId);
     if (!reservation.acquired) {
-      return { success: false, code: "CLAIM_COOLDOWN", retryAfterMs: reservation.remainingMs };
+      return {
+        success: false,
+        code: "CLAIM_COOLDOWN",
+        retryAfterMs: reservation.remainingMs,
+      };
     }
 
     let entered = false;
@@ -67,7 +76,9 @@ export class ClaimService {
     try {
       // Redis per-cell gate: only one claimant at a time proceeds to Postgres for this cell.
       entered = await this.gate.enter(cellId, userId);
-      const result = entered ? await this.execute(userId, cellId) : await this.explainLostRace(userId, cellId);
+      const result = entered
+        ? await this.execute(userId, cellId)
+        : await this.explainLostRace(userId, cellId);
       succeeded = result.success;
       // A rejected claim must not cost the player their cooldown.
       if (!result.success) await this.cooldowns.release(userId);
@@ -93,8 +104,14 @@ export class ClaimService {
 
     // 2. Pre-checks, in parallel (no writes yet).
     const [cell, user] = await Promise.all([
-      this.db.cell.findUnique({ where: { id: cellId }, include: { owner: { select: OWNER_SELECT } } }),
-      this.db.user.findUniqueOrThrow({ where: { id: userId }, select: { ...OWNER_SELECT, lastClaimAt: true } }),
+      this.db.cell.findUnique({
+        where: { id: cellId },
+        include: { owner: { select: OWNER_SELECT } },
+      }),
+      this.db.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { ...OWNER_SELECT, lastClaimAt: true },
+      }),
     ]);
     if (!cell) return { success: false, code: "CELL_NOT_FOUND" };
     const rejection = this.rejectionFor(cell, userId, now);
@@ -104,16 +121,30 @@ export class ClaimService {
     const stamp = await this.db.user.updateMany({
       where: {
         id: userId,
-        OR: [{ lastClaimAt: null }, { lastClaimAt: { lte: new Date(now.getTime() - this.rules.cooldownMs) } }],
+        OR: [
+          { lastClaimAt: null },
+          {
+            lastClaimAt: {
+              lte: new Date(now.getTime() - this.rules.cooldownMs),
+            },
+          },
+        ],
       },
       data: { lastClaimAt: now },
     });
     if (stamp.count === 0) {
-      const fresh = await this.db.user.findUnique({ where: { id: userId }, select: { lastClaimAt: true } });
+      const fresh = await this.db.user.findUnique({
+        where: { id: userId },
+        select: { lastClaimAt: true },
+      });
       return {
         success: false,
         code: "CLAIM_COOLDOWN",
-        retryAfterMs: cooldownRemainingMs(fresh?.lastClaimAt ?? user.lastClaimAt, new Date(), this.rules.cooldownMs),
+        retryAfterMs: cooldownRemainingMs(
+          fresh?.lastClaimAt ?? user.lastClaimAt,
+          new Date(),
+          this.rules.cooldownMs,
+        ),
       };
     }
 
@@ -127,7 +158,11 @@ export class ClaimService {
           lockedUntil: new Date(now.getTime() + this.rules.lockMs),
           version: { increment: 1 },
           claims: {
-            create: { userId, previousOwnerId: cell.ownerId, cellVersion: cell.version + 1 },
+            create: {
+              userId,
+              previousOwnerId: cell.ownerId,
+              cellVersion: cell.version + 1,
+            },
           },
           activity: { create: { type: "CLAIM", userId } },
         },
@@ -150,13 +185,22 @@ export class ClaimService {
 
   /** Why a cell can't be claimed right now, or null if it can. Pure over an already-loaded cell. */
   private rejectionFor(
-    cell: { ownerId: string | null; lockedUntil: Date | null; owner: OwnerDTO | null },
+    cell: {
+      ownerId: string | null;
+      lockedUntil: Date | null;
+      owner: OwnerDTO | null;
+    },
     userId: string,
     now: Date,
   ): ClaimFailure | null {
     const owner = cell.owner ? toOwnerDTO(cell.owner) : undefined;
-    if (cell.ownerId === userId) return { success: false, code: "CELL_ALREADY_CLAIMED", owner };
-    if (cell.ownerId && cell.lockedUntil && cell.lockedUntil.getTime() > now.getTime()) {
+    if (cell.ownerId === userId)
+      return { success: false, code: "CELL_ALREADY_CLAIMED", owner };
+    if (
+      cell.ownerId &&
+      cell.lockedUntil &&
+      cell.lockedUntil.getTime() > now.getTime()
+    ) {
       return {
         success: false,
         code: "CELL_LOCKED",
@@ -169,8 +213,14 @@ export class ClaimService {
   }
 
   /** We lost the compare-and-swap: re-read the winner so the client can show who beat them. */
-  private async explainLostRace(userId: string, cellId: number): Promise<ClaimFailure> {
-    const cell = await this.db.cell.findUnique({ where: { id: cellId }, include: { owner: { select: OWNER_SELECT } } });
+  private async explainLostRace(
+    userId: string,
+    cellId: number,
+  ): Promise<ClaimFailure> {
+    const cell = await this.db.cell.findUnique({
+      where: { id: cellId },
+      include: { owner: { select: OWNER_SELECT } },
+    });
     if (!cell) return { success: false, code: "CELL_NOT_FOUND" };
     return (
       this.rejectionFor(cell, userId, new Date()) ?? {
@@ -185,11 +235,21 @@ export class ClaimService {
    * Compare-and-swap the cooldown stamp back, but only if it is still the one we wrote. If the restore
    * itself fails the player just waits out one extra cooldown (bounded, self-healing), so we log and move on.
    */
-  private async restoreCooldown(userId: string, stampedAt: Date, previous: Date | null): Promise<void> {
+  private async restoreCooldown(
+    userId: string,
+    stampedAt: Date,
+    previous: Date | null,
+  ): Promise<void> {
     try {
-      await this.db.user.updateMany({ where: { id: userId, lastClaimAt: stampedAt }, data: { lastClaimAt: previous } });
+      await this.db.user.updateMany({
+        where: { id: userId, lastClaimAt: stampedAt },
+        data: { lastClaimAt: previous },
+      });
     } catch (err) {
-      this.logger.error({ event: "database_error", op: "cooldown.restore", userId, err }, "could not restore cooldown stamp");
+      this.logger.error(
+        { event: "database_error", op: "cooldown.restore", userId, err },
+        "could not restore cooldown stamp",
+      );
     }
   }
 }

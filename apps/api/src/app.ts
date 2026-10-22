@@ -17,14 +17,15 @@ export function createApp(d: AppDeps): Express {
   app.use(
     pinoHttp({
       logger: d.logger,
-      // Honour a well-formed upstream id for cross-service tracing; never trust arbitrary strings.
       genReqId: (req, res) => {
         const incoming = req.headers["x-request-id"];
-        const id = typeof incoming === "string" && REQUEST_ID.test(incoming) ? incoming : randomUUID();
+        const id =
+          typeof incoming === "string" && REQUEST_ID.test(incoming)
+            ? incoming
+            : randomUUID();
         res.setHeader("x-request-id", id);
         return id;
       },
-      // No per-request access log: it only attaches `req.log` and the request id. Errors are logged by the error handler.
       autoLogging: false,
     }),
   );
@@ -39,15 +40,13 @@ export function createApp(d: AppDeps): Express {
     }),
   );
   app.use(express.json({ limit: "8kb" }));
-  
+
   app.use("/api", (_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
     next();
   });
 
-  // Liveness: the process is up. Readiness: it can actually serve (and is not draining).
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
-
 
   app.use("/api/v1", createApiRouter(d));
   app.use(notFoundHandler);

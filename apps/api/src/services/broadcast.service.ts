@@ -1,7 +1,17 @@
-import type { LeaderboardUpdatedEvent, OwnerDTO, PresenceUpdatedEvent, RealtimeEvent, StatsUpdatedEvent, UserJoinedEvent, UserStatsUpdatedEvent, CellsClaimedEvent, ClaimDiff } from "@gridboard/shared";
-import type { Logger } from "../config/logger";
-import { createEvent } from "../lib/events";
-import type { PresenceService } from "../redis/presence";
+import type {
+  LeaderboardUpdatedEvent,
+  OwnerDTO,
+  PresenceUpdatedEvent,
+  RealtimeEvent,
+  StatsUpdatedEvent,
+  UserJoinedEvent,
+  UserStatsUpdatedEvent,
+  CellsClaimedEvent,
+  ClaimDiff,
+} from "@gridboard/shared";
+import type { Logger } from "../../config/logger";
+import { createEvent } from "../../lib/events";
+import type { PresenceService } from "../../redis/presence";
 import type { BoardService } from "./board.service";
 import type { ClaimResult } from "./claim.service";
 
@@ -51,7 +61,9 @@ export class BroadcastService {
   ) {}
 
   /** Queue a committed claim. Resolves once it is queued (the flush happens within the batch window). */
-  async cellClaimed(result: Extract<ClaimResult, { success: true }>): Promise<void> {
+  async cellClaimed(
+    result: Extract<ClaimResult, { success: true }>,
+  ): Promise<void> {
     const { cell } = result;
     this.pendingClaims.push({
       cell: {
@@ -65,9 +77,13 @@ export class BroadcastService {
     });
     this.pendingOwners[result.owner.id] = result.owner;
     this.pendingAffected.add(result.owner.id);
-    if (result.previousOwnerId) this.pendingAffected.add(result.previousOwnerId);
+    if (result.previousOwnerId)
+      this.pendingAffected.add(result.previousOwnerId);
 
-    if (this.pendingClaims.length >= MAX_CLAIMS_PER_BATCH || this.claimBatchMs <= 0) {
+    if (
+      this.pendingClaims.length >= MAX_CLAIMS_PER_BATCH ||
+      this.claimBatchMs <= 0
+    ) {
       this.flushClaims();
     } else if (!this.claimTimer) {
       // Fixed window from the FIRST queued claim (not a debounce): worst-case added latency is claimBatchMs.
@@ -89,14 +105,22 @@ export class BroadcastService {
     this.pendingAffected = new Set();
 
     try {
-      this.emitter.toBoard(createEvent<CellsClaimedEvent>("CELLS_CLAIMED", { claims, owners }));
+      this.emitter.toBoard(
+        createEvent<CellsClaimedEvent>("CELLS_CLAIMED", { claims, owners }),
+      );
     } catch (err) {
-      this.logger.error({ event: "broadcast_error", type: "CELLS_CLAIMED", err }, "failed to broadcast claims");
+      this.logger.error(
+        { event: "broadcast_error", type: "CELLS_CLAIMED", err },
+        "failed to broadcast claims",
+      );
     }
     // Once per affected user per batch, not once per claim.
     for (const id of affected) {
       this.pushUserStats(id).catch((err: unknown) =>
-        this.logger.error({ event: "broadcast_error", type: "USER_STATS_UPDATED", err }, "failed to push user stats"),
+        this.logger.error(
+          { event: "broadcast_error", type: "USER_STATS_UPDATED", err },
+          "failed to push user stats",
+        ),
       );
     }
     this.scheduleSummaries();
@@ -104,9 +128,14 @@ export class BroadcastService {
 
   userJoined(user: OwnerDTO): void {
     try {
-      this.emitter.toBoard(createEvent<UserJoinedEvent>("USER_JOINED", { user }));
+      this.emitter.toBoard(
+        createEvent<UserJoinedEvent>("USER_JOINED", { user }),
+      );
     } catch (err) {
-      this.logger.error({ event: "broadcast_error", type: "USER_JOINED", err }, "failed to broadcast join");
+      this.logger.error(
+        { event: "broadcast_error", type: "USER_JOINED", err },
+        "failed to broadcast join",
+      );
     }
   }
 
@@ -122,15 +151,23 @@ export class BroadcastService {
   async publishPresence(): Promise<void> {
     try {
       const online = await this.presence.countOnline();
-      this.emitter.toBoard(createEvent<PresenceUpdatedEvent>("PRESENCE_UPDATED", { online }));
+      this.emitter.toBoard(
+        createEvent<PresenceUpdatedEvent>("PRESENCE_UPDATED", { online }),
+      );
     } catch (err) {
-      this.logger.error({ event: "broadcast_error", type: "PRESENCE_UPDATED", err }, "failed to broadcast presence");
+      this.logger.error(
+        { event: "broadcast_error", type: "PRESENCE_UPDATED", err },
+        "failed to broadcast presence",
+      );
     }
   }
 
   private async pushUserStats(userId: string): Promise<void> {
     const stats = await this.board.getUserStats(userId);
-    this.emitter.toUser(userId, createEvent<UserStatsUpdatedEvent>("USER_STATS_UPDATED", stats));
+    this.emitter.toUser(
+      userId,
+      createEvent<UserStatsUpdatedEvent>("USER_STATS_UPDATED", stats),
+    );
   }
 
   private scheduleSummaries(): void {
@@ -152,10 +189,20 @@ export class BroadcastService {
   async publishSummaries(): Promise<void> {
     try {
       const { counts, leaderboard } = await this.board.getSummaries();
-      this.emitter.toBoard(createEvent<StatsUpdatedEvent>("STATS_UPDATED", counts));
-      this.emitter.toBoard(createEvent<LeaderboardUpdatedEvent>("LEADERBOARD_UPDATED", leaderboard));
+      this.emitter.toBoard(
+        createEvent<StatsUpdatedEvent>("STATS_UPDATED", counts),
+      );
+      this.emitter.toBoard(
+        createEvent<LeaderboardUpdatedEvent>(
+          "LEADERBOARD_UPDATED",
+          leaderboard,
+        ),
+      );
     } catch (err) {
-      this.logger.error({ event: "broadcast_error", type: "SUMMARIES", err }, "failed to broadcast summaries");
+      this.logger.error(
+        { event: "broadcast_error", type: "SUMMARIES", err },
+        "failed to broadcast summaries",
+      );
     }
   }
 

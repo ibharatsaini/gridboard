@@ -1,9 +1,14 @@
 import type { JoinRequest, OwnerDTO, UserDTO } from "@gridboard/shared";
-import type { Db } from "../lib/prisma";
+import type { Db } from "../../lib/prisma";
 import type { SessionService } from "./session.service";
 import { toOwnerDTO } from "./board.service";
 
-export const toUserDTO = (u: { id: string; displayName: string; color: string; createdAt: Date }): UserDTO => ({
+export const toUserDTO = (u: {
+  id: string;
+  displayName: string;
+  color: string;
+  createdAt: Date;
+}): UserDTO => ({
   id: u.id,
   displayName: u.displayName,
   color: u.color,
@@ -16,7 +21,6 @@ export class UserService {
     private readonly sessions: SessionService,
   ) {}
 
- 
   async join(input: JoinRequest) {
     const { token, tokenHash, expiresAt } = this.sessions.issueToken();
     const user = await this.db.user.create({
@@ -29,6 +33,12 @@ export class UserService {
       include: { sessions: { select: { id: true } } },
     });
     const owner: OwnerDTO = toOwnerDTO(user);
-    return { user: toUserDTO(user), owner, token, sessionId: user.sessions[0]!.id, expiresAt };
+    return {
+      user: toUserDTO(user),
+      owner,
+      token,
+      sessionId: user.sessions[0]!.id,
+      expiresAt,
+    };
   }
 }

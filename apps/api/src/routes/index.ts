@@ -3,8 +3,8 @@ import type { AppDeps } from "../container";
 import { boardController } from "../controllers/board.controller";
 import { claimController } from "../controllers/claim.controller";
 import { userController } from "../controllers/user.controller";
-import { clientIp, originGuard, rateLimit } from "../middleware/security";
-import { requireAuth } from "../middleware/authentication";
+import { clientIp, originGuard, rateLimit } from "../../middleware/security";
+import { requireAuth } from "../../middleware/authentication";
 
 export function createApiRouter(d: AppDeps): Router {
   const router = Router();
@@ -17,7 +17,12 @@ export function createApiRouter(d: AppDeps): Router {
   const claims = claimController(d);
 
   // Users / session
-  router.post("/users/join", origin, rateLimit(d.limiters.join, "join", clientIp), users.join);
+  router.post(
+    "/users/join",
+    origin,
+    rateLimit(d.limiters.join, "join", clientIp),
+    users.join,
+  );
   router.get("/users/me", auth, users.me);
   router.post("/users/logout", origin, auth, users.logout);
 
@@ -34,7 +39,11 @@ export function createApiRouter(d: AppDeps): Router {
     origin,
     rateLimit(d.limiters.claimPerIp, "claim_ip", clientIp), // before any DB work
     auth,
-    rateLimit(d.limiters.claimPerUser, "claim_user", (req) => req.auth!.user.id),
+    rateLimit(
+      d.limiters.claimPerUser,
+      "claim_user",
+      (req) => req.auth!.user.id,
+    ),
     claims.claim,
   );
 

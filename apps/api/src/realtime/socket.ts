@@ -10,7 +10,7 @@ import {
   type RealtimeEvent,
   type ServerToClientEvents,
 } from "@gridboard/shared";
-import type { Logger } from "../config/logger";
+import type { Logger } from "../../config/logger";
 import { PRESENCE_REFRESH_MS, type PresenceService } from "../redis/presence";
 import type { BroadcastService, EventEmitter } from "../services/broadcast.service";
 import type { SessionService } from "../services/session.service";

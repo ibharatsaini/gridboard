@@ -1,5 +1,9 @@
 import type { Request, Response } from "express";
-import { joinRequestSchema, type JoinResultDTO, type SessionDTO } from "@gridboard/shared";
+import {
+  joinRequestSchema,
+  type JoinResultDTO,
+  type SessionDTO,
+} from "@gridboard/shared";
 import type { AppDeps } from "../container";
 import { toUserDTO } from "../services/user.service";
 
