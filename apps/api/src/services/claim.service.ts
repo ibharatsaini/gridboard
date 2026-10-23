@@ -6,11 +6,11 @@ import {
   type ErrorCode,
   type OwnerDTO,
 } from "@gridboard/shared";
-import type { Logger } from "../../config/logger";
-import { Prisma, type Db } from "../../lib/prisma";
-import { cooldownRemainingMs } from "../../lib/cooldown";
-import type { CellGate } from "../../redis/cell-gate";
-import type { CooldownStore } from "../../redis/cooldown-store";
+import type { Logger } from "../config/logger";
+import { Prisma, type Db } from "../lib/prisma";
+import { cooldownRemainingMs } from "../lib/cooldown";
+import type { CellGate } from "../redis/cell-gate";
+import type { CooldownStore } from "../redis/cooldown-store";
 import { toCellDTO, toOwnerDTO } from "./board.service";
 
 export type ClaimResult =

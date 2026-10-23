@@ -15,13 +15,13 @@ import {
   type OwnerDTO,
   type UserStatsDTO,
 } from "@gridboard/shared";
-import type { Db } from "../../lib/prisma";
-import { cooldownUntil } from "../../lib/cooldown";
-import { computeTerritories, summaryFor } from "../../lib/territory";
-import { AppError } from "../../errors/app-error";
+import type { Db } from "../lib/prisma";
+import { cooldownUntil } from "../lib/cooldown";
+import { computeTerritories, summaryFor } from "../lib/territory";
+import { AppError } from "../errors/app-error";
 
-export { toCellDTO, toOwnerDTO } from "../../lib/dto";
-import { toCellDTO, toOwnerDTO } from "../../lib/dto";
+export { toCellDTO, toOwnerDTO } from "../lib/dto";
+import { toCellDTO, toOwnerDTO } from "../lib/dto";
 
 /** Read side of the board: grid, stats, standings, history. Every view reads PostgreSQL directly. */
 export class BoardService {

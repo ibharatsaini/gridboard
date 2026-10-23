@@ -9,9 +9,9 @@ import type {
   CellsClaimedEvent,
   ClaimDiff,
 } from "@gridboard/shared";
-import type { Logger } from "../../config/logger";
-import { createEvent } from "../../lib/events";
-import type { PresenceService } from "../../redis/presence";
+import type { Logger } from "../config/logger";
+import { createEvent } from "../lib/events";
+import type { PresenceService } from "../redis/presence";
 import type { BoardService } from "./board.service";
 import type { ClaimResult } from "./claim.service";
 

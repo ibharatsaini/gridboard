@@ -3,8 +3,8 @@ import type { AppDeps } from "../container";
 import { boardController } from "../controllers/board.controller";
 import { claimController } from "../controllers/claim.controller";
 import { userController } from "../controllers/user.controller";
-import { clientIp, originGuard, rateLimit } from "../../middleware/security";
-import { requireAuth } from "../../middleware/authentication";
+import { clientIp, originGuard, rateLimit } from "../middleware/security";
+import { requireAuth } from "../middleware/authentication";
 
 export function createApiRouter(d: AppDeps): Router {
   const router = Router();

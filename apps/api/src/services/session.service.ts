@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { SESSION_TTL_MS } from "@gridboard/shared";
-import type { Db } from "../../lib/prisma";
+import type { Db } from "../lib/prisma";
 
 export interface AuthContext {
   sessionId: string;

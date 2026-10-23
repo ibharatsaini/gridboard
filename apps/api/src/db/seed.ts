@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { BOARD_COLUMNS, BOARD_ROWS, cellIdFromPosition } from "@gridboard/shared";
-import { loadEnv } from "../../config/env";
+import { loadEnv } from "../config/env";
 import { createPrisma, type Db } from "../lib/prisma";
 
 /**

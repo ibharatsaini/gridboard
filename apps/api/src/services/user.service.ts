@@ -1,5 +1,5 @@
 import type { JoinRequest, OwnerDTO, UserDTO } from "@gridboard/shared";
-import type { Db } from "../../lib/prisma";
+import type { Db } from "../lib/prisma";
 import type { SessionService } from "./session.service";
 import { toOwnerDTO } from "./board.service";
 
