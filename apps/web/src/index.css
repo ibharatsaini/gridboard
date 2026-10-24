@@ -31,8 +31,10 @@
     --line: #2a2a2f;
     --ink: #f4f4f5;
     --muted: #a1a1aa;
-    --cell: #1d1d22;
-    --cell-hover: #2a2a38;
+    /* --cell: #1d1d22; */
+    --cell: #3a3a46;        /* was #26262d: empty cells, now clearly lighter than the panel */
+    --cell-hover: #55556b;
+    /* --cell-hover: #2a2a38; */
     --accent: #7aa2ff;
     color-scheme: dark;
   }

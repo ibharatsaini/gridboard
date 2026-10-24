@@ -239,8 +239,8 @@ export function Grid() {
               transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
               transformOrigin: "0 0",
               display: "grid",
-              gridTemplateColumns: `repeat(${columns}, 18px)`,
-              gap: 1,
+              gridTemplateColumns: `repeat(${columns}, 20px)`,
+              gap: 2,
               willChange: "transform",
             }}
           >
