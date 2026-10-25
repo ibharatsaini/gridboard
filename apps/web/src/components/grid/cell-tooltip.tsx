@@ -9,14 +9,18 @@ const ago = (ms: number) => {
   return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : `${Math.floor(s / 3600)}h ago`;
 };
 
-
+/**
+ * Visual tooltip for hover/focus. Each cell's aria-label already carries the same facts, so this
+ * is aria-hidden to avoid double announcements. Placement is written straight to the element
+ * (the DOM is the external system here), which avoids a render per pan frame.
+ */
 export function CellTooltip() {
   const hoverId = useViewStore((s) => s.hoverId);
   // Re-anchor when the board moves under a stationary pointer.
   const scale = useViewStore((s) => s.scale);
   const x = useViewStore((s) => s.x);
   const y = useViewStore((s) => s.y);
-  const cell = useBoardStore((s) => (hoverId ? s.cells[hoverId] : undefined));
+  const cell = useBoardStore((s) => (hoverId ? (s.pending[hoverId] ?? s.cells[hoverId]) : undefined));
   const owner = useBoardStore((s) => (cell ? s.owners[cell.ownerId] : undefined));
   const now = useServerNow(250);
   const ref = useRef<HTMLDivElement>(null);

@@ -1,15 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { toast } from "sonner";
-import { cellLabel, positionFromCellId, type OwnerDTO, type SessionDTO } from "@gridboard/shared";
+import { CELL_LOCK_MS, CLAIM_COOLDOWN_MS, positionFromCellId, type OwnerDTO, type SessionDTO } from "@gridboard/shared";
 import { ApiError, api } from "@/lib/api";
-import { toCellState } from "@/lib/board-model";
+import { isLocked, toCellState, type CellState } from "@/lib/board-model";
 import { keys, reconcile } from "@/lib/queries";
 import { serverNow, useBoardStore } from "@/store/board";
 
 /**
- * Optimistic claiming. The "CLAIMING" flag is a UI hint only: ownership is written to the
- * store exclusively from server-confirmed data (the response or a socket event).
+ * Claiming works like an Instagram like: the cell turns yours the instant you click, the request goes out in the
+ * background, and if the server says no the cell is put back and you are told why.
+ *
+ * The optimistic cell lives in `pending`, separate from the confirmed `cells` map, so rolling back is just deleting
+ * that entry. The server stays the judge: confirmed ownership only ever comes from its response or a socket event.
  */
 export function useClaim() {
   const qc = useQueryClient();
@@ -19,8 +22,8 @@ export function useClaim() {
       const board = useBoardStore.getState();
       if (board.pending[id]) return;
       const { row, column } = positionFromCellId(id);
-      const label = cellLabel(row, column);
-      const wasAvailable = !board.cells[id];
+      const real = board.cells[id];
+      const wasAvailable = !real;
 
       // UX only: the server enforces the cooldown regardless of what we do here.
       const me = qc.getQueryData<SessionDTO>(keys.me);
@@ -31,14 +34,41 @@ export function useClaim() {
         return;
       }
 
-      board.setPending(id, true);
+      // 1. Show it as yours immediately. Skipped when we already know the server will refuse (locked by someone else,
+      //    or already ours), so the cell never flashes yours and snaps back for a sure loss.
+      const optimistic = !!me && real?.ownerId !== me.user.id && !isLocked(real, serverNow());
+      const previousCooldown = me?.stats.cooldownUntil ?? null;
+      if (optimistic && me) {
+        const now = serverNow();
+        const guess: CellState = {
+          id, row, column,
+          ownerId: me.user.id,
+          claimedAt: now,
+          lockedUntil: now + CELL_LOCK_MS,
+          version: (real?.version ?? 0) + 1,
+        };
+        board.setPending(id, guess, { id: me.user.id, displayName: me.user.displayName, color: me.user.color });
+        // Start the cooldown meter now too, so a second click in the next few hundred ms is stopped locally.
+        qc.setQueryData<SessionDTO>(keys.me, (old) =>
+          old ? { ...old, stats: { ...old.stats, cooldownUntil: new Date(now + CLAIM_COOLDOWN_MS).toISOString() } } : old,
+        );
+      } else {
+        board.setPending(id, null);
+      }
+
       try {
         const res = await api.claim(id);
         const cell = toCellState(res.cell);
-        if (cell) useBoardStore.getState().applyCell(cell, res.owner);
+        if (cell) useBoardStore.getState().applyCell(cell, res.owner); // confirmed truth replaces the guess
         qc.setQueryData<SessionDTO>(keys.me, (old) => (old ? { ...old, stats: res.stats } : old));
-        toast.success(`Cell ${label} claimed`, { id: `claim-${id}` });
       } catch (err) {
+        // 2. Roll back: forget the guess, restore the cooldown meter, shake the cell.
+        useBoardStore.getState().setPending(id, null);
+        if (optimistic) {
+          qc.setQueryData<SessionDTO>(keys.me, (old) =>
+            old ? { ...old, stats: { ...old.stats, cooldownUntil: previousCooldown } } : old,
+          );
+        }
         useBoardStore.getState().markFailed(id);
         if (!(err instanceof ApiError)) throw err;
         switch (err.code) {
@@ -53,9 +83,17 @@ export function useClaim() {
             }).catch(() => undefined);
             break;
           }
-          case "CLAIM_COOLDOWN":
+          case "CLAIM_COOLDOWN": {
+            // The server knows the true remaining time; show it on the meter instead of the guess we rolled back to.
+            const retry = typeof err.details?.retryAfterMs === "number" ? err.details.retryAfterMs : 0;
+            if (retry > 0) {
+              qc.setQueryData<SessionDTO>(keys.me, (old) =>
+                old ? { ...old, stats: { ...old.stats, cooldownUntil: new Date(serverNow() + retry).toISOString() } } : old,
+              );
+            }
             toast.message(err.message, { id: "cooldown" });
             break;
+          }
           case "RATE_LIMITED":
             toast.warning("Too many clicks. Take a breath.", { id: "ratelimit" });
             break;
@@ -69,8 +107,6 @@ export function useClaim() {
           default:
             toast.error(err.message);
         }
-      } finally {
-        useBoardStore.getState().setPending(id, false);
       }
     },
     [qc],
